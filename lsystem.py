@@ -13,7 +13,10 @@ def eval_rules(rules, niter=10, init='0'):
 		new_seq = ''
 		for c in seq:
 			if c in rules:
-				new_seq += rules[c]
+				try:
+					new_seq += rules[c]()
+				except TypeError:
+					new_seq += rules[c]
 			else:
 				new_seq += c
 		seq = new_seq
@@ -45,24 +48,27 @@ class Drawer(object):
 			self.colors = [rgb2hex(c) for c in (cmap(i/len(seq)) for i in \
 				range(len(seq)))]
 
-	def _strokes(self, seq, draw_rules):
+	def _strokes(self, seq, draw_rules, step):
 		""" Draws a seq with draw_rules when there is Lifo stacking. """
-		queue = LifoQueue()
+		queue, depth = LifoQueue(), 0
 		for c in seq:
 			if c == self.push:
 				queue.put((self.t.heading(), self.t.position()))
+				depth += 1
 			elif c == self.pop:
 				heading, pos = queue.get()
+				depth -= 1
 				self.t.penup()
 				self.t.setheading(heading)
 				self.t.setpos(pos)
 				self.t.pendown()
 			if c in draw_rules:
 				try:
-					draw_rules[c](self.t, 0.1)
+					draw_rules[c](t=self.t, step=step, depth=depth)
 				except:
+					raise
 					for func in draw_rules[c]:
-						func(self.t, 0.1)
+						func(self.t, step)
 			yield
 
 	def draw(self):
@@ -72,28 +78,29 @@ class Drawer(object):
 		self.t.pencolor(self.colors[0])
 		borders = (-1, -1, 1, 1)
 		rescale = 1.2
+		step = 0.1
 		turtle.setworldcoordinates(*borders)
 		(xmin, ymin), (xmax, ymax) = self.t.pos(), self.t.pos()
-		for i, _ in enumerate(self._strokes(self.seq, self.draw_rules)):
-			tx, ty = self.t.pos()
-			xmin, ymin, xmax, ymax = min(xmin, tx), min(ymin, ty), \
-				max(xmax, tx), max(ymax, ty)
-			xdist, ydist = xmax - xmin, ymax - ymin
-			maxdist = max(xdist, ydist)
-			xhang, yhang = maxdist - xdist, maxdist - ydist
-			margin = maxdist*self.margin_scale
-			borders = (xmin - (xhang + margin)/2, ymin - (yhang + margin)/2, \
-				xmax + (xhang + margin)/2, ymax + (yhang + margin)/2)
-			turtle.setworldcoordinates(*borders)
-			self.t.pencolor(self.colors[i])
-		self.t.hideturtle()
-		turtle.done()
+		try:
+			for i, _ in enumerate(\
+					self._strokes(self.seq, self.draw_rules, step)):
+				tx, ty = self.t.pos()
+				xmin, ymin, xmax, ymax = min(xmin, tx), min(ymin, ty), \
+					max(xmax, tx), max(ymax, ty)
+				xdist, ydist = xmax - xmin, ymax - ymin
+				maxdist = max(xdist, ydist)
+				xhang, yhang = maxdist - xdist, maxdist - ydist
+				margin = maxdist*self.margin_scale
+				borders = (xmin - (xhang + margin)/2, ymin - (yhang + margin)/2, \
+					xmax + (xhang + margin)/2, ymax + (yhang + margin)/2)
+				turtle.setworldcoordinates(*borders)
+				self.t.pencolor(self.colors[i])
+			self.t.hideturtle()
+			turtle.done()
+		except:
+			raise
+			turtle.bye()
 
 
 if __name__ == '__main__':
-	plant_rules = {'X': 'F-[[X]+X]+F[+FX]-X', 'F': 'FF'}
-	seq = eval_rules(plant_rules, niter=3, init='X')
-	draw_rules = {'F': (lambda t, step: t.forward(step),), \
-		'-': (lambda t, step: t.left(25),),
-		'+': (lambda t, step: t.right(25),)}
-	Drawer(seq, draw_rules).draw()
+	pass
