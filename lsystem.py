@@ -66,9 +66,8 @@ class Drawer(object):
 				try:
 					draw_rules[c](t=self.t, step=step, depth=depth)
 				except:
-					raise
 					for func in draw_rules[c]:
-						func(self.t, step)
+						func(t=self.t, step=step, depth=depth)
 			yield
 
 	def draw(self):
@@ -98,7 +97,6 @@ class Drawer(object):
 			self.t.hideturtle()
 			turtle.done()
 		except:
-			raise
 			turtle.bye()
 
 
