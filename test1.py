@@ -1,5 +1,4 @@
 from lsystem import eval_rules
-from random import choice
 from numpy import arange
 from numpy.random import normal
 

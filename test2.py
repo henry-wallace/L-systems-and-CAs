@@ -1,9 +1,8 @@
 from lsystem import eval_rules
-from random import choice
 from numpy import arange
-from numpy.random import normal
+from numpy.random import normal, choice
 
-rules = {'1': '11', '0': lambda: choice(('1[0[0]]0', '1[0[0[0]]]'))}
+rules = {'1': '11', '0': lambda: choice((['1[0]0', '1[0[0]]0', '1[0[0[0]]]0']))}
 seq = eval_rules(rules, niter=4, init='0')
 draw_rules = {'1': lambda **kw: kw['t'].forward(kw['step']), 
 	'[': lambda **kw: kw['t'].left(normal(kw['depth']*0.1, 20)), \
