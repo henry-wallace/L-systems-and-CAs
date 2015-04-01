@@ -26,7 +26,6 @@ def neighborhoods(it, n, pad=0):
     yield from zip(*(it[i:] for i in range(n)))
     yield tuple(chain(repeat(pad, n//2), it[:n//2 + 1]))
 
-
 def binary_digits(n, width):
     """Return n in binary, padded in the front with 0s such that the binary 
     representation has width digits."""
@@ -56,7 +55,7 @@ class Rule(object):
             sorted(self.dict.items())) + '}'
 
     def __getitem__(self, key):
-        return self.dict[key]
+        return self.dict[tuple(np.reshape(key, -1))]    # to allow ndarray keys
 
 # todo: let curr_state be nD matrix
 def next_state(curr_state, rule):
@@ -92,11 +91,12 @@ def wrapped_ball(A, x, reach):
     return A[tuple(indices)]
 
 def nball(A, x, reach=1, wrap=True, pad=0):
+    assert(len(x) == len(A.shape))
     def func(*coordinate):
         offset = tuple(a + b - reach for a, b in zip(coordinate, x))
         if wrap:
             return A[tuple(t % A.shape[i] for i, t in enumerate(offset))]
-        elif all(0 <= t <= A.shape[i] for i, t in enumerate(offset)):
+        elif all(0 <= t < A.shape[i] for i, t in enumerate(offset)):
             return A[offset]
         else:
             return pad
@@ -140,7 +140,7 @@ def plot_rule_nD(init, rule, niter):
                 matrix[index] = rule[tuple(ball)]
     plt.show()
 
-def animate_rules_nD(init, rules, niter):
+def animate_rules_nD(init, rules, niter, wrap=True):
     sub_x, sub_y = find_factorization(len(rules))
     fig, axes = plt.subplots(sub_x, sub_y)
     matrices = [init.copy() for _ in range(len(rules))]
@@ -154,10 +154,10 @@ def animate_rules_nD(init, rules, niter):
             if r is not None:
                 im.set_data(m)
                 for index, _ in np.ndenumerate(m):
-                    ball = wrapped_ball(m, index, reach=1)
-                    m[index] = r[tuple(ball)]
+                    ball = nball(m, index, reach=1, wrap=wrap)
+                    m[index] = r[ball]
                 ax.set_title('Rule: {}'.format(r.index))
-    ani = FuncAnimation(fig, update, frames=niter, interval=200)
+    ani = FuncAnimation(fig, update, frames=niter, interval=200, repeat=False)
     plt.show()
 
 if __name__ == '__main__':
@@ -166,13 +166,12 @@ if __name__ == '__main__':
     # init = [1 if i == niter else 0 for i in range(2*niter)]
     # animate_rules(init, rules, niter)
 
-    # # np.random.seed(42)
-    # init = np.random.randint(2, size=(100, 100))
-    # rules = [Rule('random', size=9) for _ in range(1)]
-    # animate_rules_nD(init, rules, niter=25)
+    # np.random.seed(42)
+    init = np.random.randint(2, size=(10, 10))
+    rules = [Rule('random', size=9) for _ in range(1)]
+    animate_rules_nD(init, rules, niter=30, wrap=False)
 
-    A = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    # A = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
     # A = np.array([1, 2, 3])
-    print(A)
-    x = nball(A, x=(0, 0), wrap=True)
-    print(x)
+    # x = nball(A, x=(2,), wrap=False)
+    # print(x)
