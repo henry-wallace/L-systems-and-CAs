@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from itertools import islice, chain, repeat, zip_longest, product
-import matplotlib.animation as animation
+from matplotlib.animation import FuncAnimation
 
 def find_factorization(x, alpha=1, beta=1):
     """Return the tuple (n, m) that best factorizes x <= n*m such that x - n*m 
@@ -35,17 +35,21 @@ def binary_digits(n, width):
 
 class Rule(object):
     """Rule object is created from an index rule (which can be read in base 2) 
-    from a lexicographic ordering of all possible rules with neighbors look 
-    around. E.g. if neighbors == 2, and index == 0 then the rule would be 
+    from a lexicographic ordering of all possible rules with size look 
+    around. E.g. if size == 2, and index == 0 then the rule would be 
     (0, 0): 0, (0, 1): 0, (1, 0): 0, (1, 1): 0. Rule objects support key 
     lookups."""
-    def __init__(self, index, neighbors=3):
-        assert(index < 2**(2**neighbors))
+    def __init__(self, index, size=3):
+        self.size = size
         self.index = index
-        self.neighbors = neighbors
-        targets = binary_digits(index, 2**neighbors)
-        self.dict = {binary_digits(i, neighbors): t for i, t in \
-            enumerate(targets)}
+        if index == 'random':
+            self.dict = {binary_digits(i, size): np.random.randint(2) \
+                for i in range(2**size)}
+        else:
+            assert(index < 2**(2**size))
+            targets = binary_digits(index, 2**size)
+            self.dict = {binary_digits(i, size): t for i, t in \
+                enumerate(targets)}
         
     def __repr__(self):
         return '{' + ', '.join('{}: {}'.format(k, v) for k, v in \
@@ -54,44 +58,121 @@ class Rule(object):
     def __getitem__(self, key):
         return self.dict[key]
 
+# todo: let curr_state be nD matrix
+def next_state(curr_state, rule):
+    new_state = []
+    for pattern in neighborhoods(curr_state, rule.size):
+        new_state.append(rule[pattern])
+    return new_state
+
 def plot_rules(init, rules, niter):
     """For each rule in rules (an iterable of Rule objects) plot the subplots
     of each rule performed on init for niter iterations."""
     sub_x, sub_y = find_factorization(len(rules))
     fig, axes = plt.subplots(sub_x, sub_y)
     for r, ax in zip_longest(rules, np.reshape(axes, -1)):
-        if r is None:
-            ax.axis('off')
-        else:
+        ax.axis('off')
+        if r is not None:
             matrix = np.zeros((niter + 1, len(init)))
             matrix[0, :] = init
             for i in range(niter):
-                curr_state = matrix[i , :]
-                new_state = []
-                for pattern in neighborhoods(curr_state, r.neighbors):
-                    new_state.append(r[pattern])
-                matrix[i + 1, :] = new_state
-            ax.imshow(matrix, interpolation='nearest', cmap='Greys', \
-                aspect='equal')
-            ax.axis('off')
+                matrix[i + 1, :] = next_state(matrix[i , :], r)
+            ax.imshow(matrix, interpolation='nearest', cmap='Greys')
             ax.set_title('Rule: {}'.format(r.index))
-            ax.set_aspect('equal')
     plt.show()
 
-def wrapped_neighbood(A, x, reach):
-    """Return the neighborhood of an nD coordinate within an nD matrix A, where
-    the radius of one axis is reach. OUt of bound indices wrap."""
-    offsets = product(range(-reach, reach - 1), repeat=len(x))
+def wrapped_ball(A, x, reach):
+    """Return the neighborhood of an nD coordinate x within an nD matrix A, 
+    where the radius of one axis is reach. Out of bound indices wrap."""
+    if reach == 0:
+        return A[x]
+    offsets = product(range(-reach, reach + 1), repeat=len(x))
     neighbor = lambda c: (sum(t) % A.shape[i] for i, t in enumerate(zip(x, c)))
     indices = zip(*(tuple(neighbor(c)) for c in offsets))
     return A[tuple(indices)]
 
-def plot2D():
-    """To-do."""
-    pass
+def nball(A, x, reach=1, wrap=True, pad=0):
+    def func(*coordinate):
+        offset = tuple(a + b - reach for a, b in zip(coordinate, x))
+        if wrap:
+            return A[tuple(t % A.shape[i] for i, t in enumerate(offset))]
+        elif all(0 <= t <= A.shape[i] for i, t in enumerate(offset)):
+            return A[offset]
+        else:
+            return pad
+    shape = tuple(2*reach + 1 for _ in range(len(A.shape)))
+    return np.fromfunction(np.vectorize(func), shape=shape, dtype=A.dtype)
+
+def animate_rules(init, rules, niter):
+    """Similar to plot_rules(), animates subpots of each rule in rules."""
+    sub_x, sub_y = find_factorization(len(rules))
+    fig, axes = plt.subplots(sub_x, sub_y)
+    matrices = [np.zeros((niter + 1, len(init))) for _ in range(len(rules))]
+    for m in matrices:      # make it such that init can be a list of inits
+        m[0, :] = init
+    kwargs = {'interpolation': 'nearest', 'cmap': 'Greys'}
+    ims = [ax.imshow(m, **kwargs) for m, ax in \
+        zip(matrices, np.reshape(axes, -1))]
+    def update(i):
+        for r, m, im, ax in \
+                zip_longest(rules, matrices, ims, np.reshape(axes, -1)):
+            ax.axis('off')
+            if r is not None:
+                m[i + 1, :] = next_state(m[i, :], r)
+                im.set_data(m)
+                ax.set_title('Rule: {}'.format(r.index))
+    ani = FuncAnimation(fig, update, frames=niter, interval=1)
+    plt.show()
+
+"""todo: allow rule to be  list of rules, and subdivide areas of axes
+to be the different rules"""
+def plot_rule_nD(init, rule, niter):
+    sub_x, sub_y = find_factorization(niter + 1)
+    fig, axes = plt.subplots(sub_x, sub_y)
+    kwargs = {'interpolation': 'nearest', 'cmap': 'Greys'}     
+    matrix = init   
+    for i, ax in enumerate(np.reshape(axes, -1)):
+        ax.axis('off')
+        if i <= niter + 1:
+            ax.imshow(matrix.copy(), **kwargs)
+            for index, _ in np.ndenumerate(matrix):
+                ball = wrapped_ball(matrix, index, reach=1)
+                matrix[index] = rule[tuple(ball)]
+    plt.show()
+
+def animate_rules_nD(init, rules, niter):
+    sub_x, sub_y = find_factorization(len(rules))
+    fig, axes = plt.subplots(sub_x, sub_y)
+    matrices = [init.copy() for _ in range(len(rules))]
+    kwargs = {'interpolation': 'nearest', 'cmap': 'Greys'}
+    ims = [ax.imshow(m, **kwargs) for m, ax in \
+        zip(matrices, np.reshape(axes, -1))]
+    def update(i):
+        for r, m, im, ax in \
+                zip_longest(rules, matrices, ims, np.reshape(axes, -1)):
+            ax.axis('off')
+            if r is not None:
+                im.set_data(m)
+                for index, _ in np.ndenumerate(m):
+                    ball = wrapped_ball(m, index, reach=1)
+                    m[index] = r[tuple(ball)]
+                ax.set_title('Rule: {}'.format(r.index))
+    ani = FuncAnimation(fig, update, frames=niter, interval=200)
+    plt.show()
 
 if __name__ == '__main__':
-    A = np.array([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]])
-    print(wrapped_neighbood(A, (3, 3), 1))
+    # rules = [Rule(n) for n in range(120, 123)]
+    # niter = 20
+    # init = [1 if i == niter else 0 for i in range(2*niter)]
+    # animate_rules(init, rules, niter)
 
+    # # np.random.seed(42)
+    # init = np.random.randint(2, size=(100, 100))
+    # rules = [Rule('random', size=9) for _ in range(1)]
+    # animate_rules_nD(init, rules, niter=25)
 
+    A = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    # A = np.array([1, 2, 3])
+    print(A)
+    x = nball(A, x=(0, 0), wrap=True)
+    print(x)
