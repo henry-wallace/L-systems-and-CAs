@@ -25,6 +25,9 @@ parser.add_argument('-p', '--pensize', dest='pensize', type=int, default=3, \
 	help='Define pensize for l-system drawer in range 1-10.')
 
 args = parser.parse_args()
+print(args)
+exit()
+
 
 # L-SYSTEM DRAWING
 if args.cmap is not None:

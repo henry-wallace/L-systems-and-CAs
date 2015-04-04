@@ -121,7 +121,7 @@ def animate_rules(init, rules, niter):
                 m[i + 1, :] = next_state(m[i, :], r)
                 im.set_data(m)
                 ax.set_title('Rule: {}'.format(r.index))
-    ani = FuncAnimation(fig, update, frames=niter, interval=1)
+    ani = FuncAnimation(fig, update, frames=niter, interval=10)
     plt.show()
 
 """todo: allow rule to be  list of rules, and subdivide areas of axes
@@ -161,17 +161,18 @@ def animate_rules_nD(init, rules, niter, wrap=True):
     plt.show()
 
 if __name__ == '__main__':
-    # rules = [Rule(n) for n in range(120, 123)]
-    # niter = 20
+	pass
+    # rules = [Rule(n) for n in range(120, 145)]
+    # niter = 50
     # init = [1 if i == niter else 0 for i in range(2*niter)]
     # animate_rules(init, rules, niter)
 
-    # np.random.seed(42)
-    init = np.random.randint(2, size=(10, 10))
-    rules = [Rule('random', size=9) for _ in range(1)]
-    animate_rules_nD(init, rules, niter=30, wrap=False)
+    # # np.random.seed(42)
+    # init = np.random.randint(2, size=(10, 10))
+    # rules = [Rule('random', size=9) for _ in range(1)]
+    # animate_rules_nD(init, rules, niter=30, wrap=False)
 
-    # A = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-    # A = np.array([1, 2, 3])
-    # x = nball(A, x=(2,), wrap=False)
-    # print(x)
+    # # A = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    # # A = np.array([1, 2, 3])
+    # # x = nball(A, x=(2,), wrap=False)
+    # # print(x)
