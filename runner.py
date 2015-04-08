@@ -1,11 +1,14 @@
 import argparse
+import sys
 from lsystem import eval_rules, Drawer
 from automaton import plot_rules, Rule
 from itertools import chain, takewhile
 from palettable.colorbrewer.sequential import *
 
+
 parser = argparse.ArgumentParser(description='Command-line tool plotting \
-	iterative functions.')
+	iterative functions. See http://nbviewer.ipython.org/github/henry-wallace/\
+	L-systems-and-CAs/blob/master/lsystems-and-cas.ipynb for full explanation.')
 parser.add_argument('-l', '--lname', nargs=1, dest='lname', help='Name of \
 	l-system, viz.: plant, pythag, koch, dragon, sierp.')
 parser.add_argument('-f', '--fromfile', dest='fromfile', action='store_true', \
@@ -24,10 +27,10 @@ parser.add_argument('--cmap', dest='cmap', nargs='*', help='colorbrewer sequenti
 parser.add_argument('-p', '--pensize', dest='pensize', type=int, default=3, \
 	help='Define pensize for l-system drawer in range 1-10.')
 
+if len(sys.argv) == 1:
+	parser.print_help()
+	sys.exit(1)
 args = parser.parse_args()
-print(args)
-exit()
-
 
 # L-SYSTEM DRAWING
 if args.cmap is not None:
