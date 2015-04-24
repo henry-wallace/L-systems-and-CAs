@@ -21,10 +21,9 @@ def find_factorization(x, alpha=1, beta=1):
 def neighborhoods(it, n, pad=0):
     """Given a 1D iterable it, and neighborhood width n, yields n-gram tuples 
     around each element in it padded with pad, with default 0."""
-    padded_it = chain(repeat(pad, n//2), it, repeat(pad, n//2))
-    yield tuple(chain(repeat(pad, n//2), it[:n//2 + 1]))
-    yield from zip(*(it[i:] for i in range(n)))
-    yield tuple(chain(repeat(pad, n//2), it[:n//2 + 1]))
+    padded_it = tuple(chain(repeat(pad, n//2), it, repeat(pad, n//2)))
+    for i in range(len(it)):
+        yield padded_it[i:i + n]
 
 def binary_digits(n, width):
     """Return n in binary, padded in the front with 0s such that the binary 
@@ -32,26 +31,36 @@ def binary_digits(n, width):
     format_str = '{{:0{}b}}'.format(width)
     return tuple(int(c) for c in format_str.format(n))
 
+def dec2base(n, base, width=0):
+    digits = []
+    while n > 0:
+        digits.append(n % base)
+        n //= base
+    digits.extend(repeat(0, width - len(digits)))
+    return tuple(reversed(digits))
+
 class Rule(object):
     """Rule object is created from an index rule (which can be read in base 2) 
     from a lexicographic ordering of all possible rules with size look 
     around. E.g. if size == 2, and index == 0 then the rule would be 
     (0, 0): 0, (0, 1): 0, (1, 0): 0, (1, 1): 0. Rule objects support key 
     lookups."""
-    def __init__(self, index, size=3):
+    def __init__(self, index, base=2, size=3):
         self.size = size
         self.index = index
         if index == 'random':
-            self.dict = {binary_digits(i, size): np.random.randint(2) \
-                for i in range(2**size)}
+            self.dict = {dec2base(i, base, width=size): np.random.randint(base) \
+                for i in range(base**size)}
+            self.index = sum(v*base**i for i, (k, v) in \
+                enumerate(sorted(self.dict.items())))
         else:
-            assert(index < 2**(2**size))
-            targets = binary_digits(index, 2**size)
-            self.dict = {binary_digits(i, size): t for i, t in \
-                enumerate(targets)}
+            assert(index < base**(base**size))
+            targets = dec2base(index, base, width=base**size)
+            self.dict = {dec2base(i, base, width=size): t for i, t in \
+                enumerate(reversed(targets))}
         
     def __repr__(self):
-        return '{' + ', '.join('{}: {}'.format(k, v) for k, v in \
+        return '{' + ',\n'.join('{}: {}'.format(k, v) for k, v in \
             sorted(self.dict.items())) + '}'
 
     def __getitem__(self, key):
@@ -64,7 +73,7 @@ def next_state(curr_state, rule):
         new_state.append(rule[pattern])
     return new_state
 
-def plot_rules(init, rules, niter):
+def plot_rules(init, rules, niter, cmap='Greys', view=0):
     """For each rule in rules (an iterable of Rule objects) plot the subplots
     of each rule performed on init for niter iterations."""
     sub_x, sub_y = find_factorization(len(rules))
@@ -75,8 +84,8 @@ def plot_rules(init, rules, niter):
             matrix = np.zeros((niter + 1, len(init)))
             matrix[0, :] = init
             for i in range(niter):
-                matrix[i + 1, :] = next_state(matrix[i , :], r)
-            ax.imshow(matrix, interpolation='nearest', cmap='Greys')
+                matrix[i + 1, :] = next_state(matrix[i, :], r)
+            ax.imshow(matrix[view:, :], interpolation='nearest', cmap=cmap)
             ax.set_title('Rule: {}'.format(r.index))
     plt.show()
 
@@ -161,18 +170,14 @@ def animate_rules_nD(init, rules, niter, wrap=True):
     plt.show()
 
 if __name__ == '__main__':
-	pass
-    # rules = [Rule(n) for n in range(120, 145)]
-    # niter = 50
-    # init = [1 if i == niter else 0 for i in range(2*niter)]
-    # animate_rules(init, rules, niter)
+    pass
 
-    # # np.random.seed(42)
-    # init = np.random.randint(2, size=(10, 10))
-    # rules = [Rule('random', size=9) for _ in range(1)]
-    # animate_rules_nD(init, rules, niter=30, wrap=False)
+    niter = 200
+    init = [0] * niter*2
+    init[niter] = 1
+    plot_rules(init, [Rule(438, base=3)], niter)
 
-    # # A = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-    # # A = np.array([1, 2, 3])
-    # # x = nball(A, x=(2,), wrap=False)
-    # # print(x)
+
+
+
+
