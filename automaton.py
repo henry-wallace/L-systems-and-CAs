@@ -48,6 +48,7 @@ class Rule(object):
     def __init__(self, index, base=2, size=3):
         self.size = size
         self.index = index
+        self.base = base
         if index == 'random':
             self.dict = {dec2base(i, base, width=size): np.random.randint(base) \
                 for i in range(base**size)}
@@ -172,10 +173,10 @@ def animate_rules_nD(init, rules, niter, wrap=True):
 if __name__ == '__main__':
     pass
 
-    niter = 200
+    niter = 100
     init = [0] * niter*2
     init[niter] = 1
-    plot_rules(init, [Rule(438, base=3)], niter)
+    plot_rules(init, [Rule(201, base=4)], niter, cmap='Set3')
 
 
 

@@ -17,6 +17,8 @@ parser.add_argument('-c', '--cname', dest='cname', nargs='+', help="Rule \
 	numbers for CA, e.g. '-c 100 102 120-130'.")
 parser.add_argument('-n', '--niter', dest='niter', type=int, help='Number of \
 	iterations.')
+parser.add_argument('-b', '--base', dest='base', type=int, default=2,
+	help='Size of field that CA operates on.')
 parser.add_argument('-i', '--init', dest='init', nargs='?', \
 	help="Initialization for CA, e.g. '-i 0001000'. If unspecified then an \
 	array of 2*niter 0s with a 1 in the center will be used.")
@@ -108,9 +110,9 @@ if args.cname is not None:
 	rules = []
 	for rg in rule_groups:
 		if len(rg) == 2:
-			rules += [Rule(i) for i in range(rg[0], rg[1])]
+			rules += [Rule(i, base=args.base) for i in range(rg[0], rg[1])]
 		else:
-			rules.append(Rule(rg[0]))
+			rules.append(Rule(rg[0], base=args.base))
 	if args.init is not None:
 		init = [int(c) for c in args.init]
 	else:
